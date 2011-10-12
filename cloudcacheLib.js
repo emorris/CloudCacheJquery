@@ -2,7 +2,7 @@ var cloudCache = {
     access_key  :   'b5ec816c-9973-11de-954f-12313b000e46',
     secret_key  :   'de01ca095d586f17b57f0f902f6f45c5',
     timestamp   :   new Date().getTime(),
-    baseUrl     :   "http://174.129.12.177:4567/",
+    baseUrl     :   "http://0.0.0.0:4567/",
     auth        :   "",
     shaObj      :   null,
     hmac        :   null,
@@ -12,30 +12,32 @@ var cloudCache = {
     {
         this.buildAuth();
     }, 
-    buildAuth: function()
+    buildAuth: function(opertaion)
     {
         this.timestamp  = new Date().getTime();
-        this.auth       =   "CloudCache"+this.access_key+this.timestamp;
-        this.shaObj     =   new jsSHA(this.auth,"HEX");
-        this.hmac       =   shaObj.getHMAC(this.secret_key, "ASCII", "SHA-1", "HEX");
+        this.auth       =   "CloudCache"+opertaion+this.timestamp;
+        this.shaObj     =   new jsSHA(this.auth,"ASCII");
+        this.hmac       =   this.shaObj.getHMAC(this.secret_key, "ASCII", "SHA-1", "B64");
         this.setHeaders();
     },
     
     setHeaders : function()
     {
         this.headers = {
-                  'access-key': this.access_key,
-                  'timestamp' : this.timestamp,
-                  'signature' : this.hmac
+                  'HTTP_AKEY': this.access_key,
+                  'HTTP_TIMESTAMP' : this.timestamp,
+                  'HTTP_SIGNATURE' : this.hmac+"="
             }    
     },
     
     testAuth : function(callback)
     {
-        this.buildAuth();
+        this.buildAuth("auth");
         $.ajax({
             headers: this.headers,
+            dataType: "jsonp",
             type: "GET",
+            data:this.headers,
             url: this.baseUrl+"auth",
             success: function(data){
                 callback(data);
@@ -45,12 +47,13 @@ var cloudCache = {
     
     putKeyValue : function (key, data,callback)
     {
-        this.buildAuth();
+        this.buildAuth('POST');
+        var sendData = this.headers;
+        sendData.data = data;
         $.ajax({
-            headers: this.headers,
-            type: "POST",
-            url: this.baseUrl+key,
-            data:data,
+            dataType: "jsonp",
+            url: this.baseUrl+"put/"+key,
+            data:sendData,
             success: function(data){
                 callback(data);
             }
@@ -58,26 +61,26 @@ var cloudCache = {
     },
     getValue : function(key,callback)
     {
-        this.buildAuth();
+        this.buildAuth("GET");
+        var sendData = this.headers;
         $.ajax({
-            headers: this.headers,
-            type: "GET",
-            url: this.baseUrl+key,
-            data:data,
+            dataType: "jsonp",
+            data:sendData,
+            url: this.baseUrl+"get/"+key,
             success: function(data){
                 callback(data);
             }
         });
     },
     
-    deleteValue : function(key,callback)
+    deleteKey : function(key,callback)
     {
-        this.buildAuth();
+        this.buildAuth("DELETE");
         $.ajax({
-            headers: this.headers,
             type: "DELETE",
-            url: this.baseUrl+key,
-            data:data,
+            dataType: "jsonp",
+            data: this.headers,
+            url: this.baseUrl+"delete/"+key,
             success: function(data){
                 callback(data);
             }
@@ -88,13 +91,16 @@ var cloudCache = {
     
     getMultiValue : function(data,callback)
     {
-        this.buildAuth();
+
+        this.buildAuth("GET");
+        var sendData = this.headers;
+        sendData.data = data;
+
         $.ajax({
-            headers: this.headers,
             type: "GET",
-            url: baseUrl+"getmulti",
-            dataTypeString:"jsonp",
-            data:data,
+            url: this.baseUrl+"get/multi",
+            dataType: "jsonp",
+            data:sendData,
             success: function(data){
                 callback(data);
             }
@@ -104,12 +110,12 @@ var cloudCache = {
     
     incrementKey : function(key,incr,callback)
     {
-        this.buildAuth();   
+        this.buildAuth("POST");   
         $.ajax({
             headers: this.headers,
             type: "POST",
             url: this.baseUrl+key+"/incr",
-            dataTypeString:"jsonp",
+            dataType: "jsonp",
             data:{val : incr},
             success: function(data){
                 callback(data);
@@ -119,12 +125,12 @@ var cloudCache = {
     
     decrementKey : function(key,incr,callback)
     {
-        this.buildAuth();
+        this.buildAuth("POST");
         $.ajax({
             headers: this.headers,
             type: "POST",
             url: this.baseUrl+this.key+"/decr",
-            dataTypeString:"jsonp",
+            dataType: "jsonp",
             data:{val : incr},
             success: function(data){
                 callback(data);
@@ -134,12 +140,11 @@ var cloudCache = {
 
     flush : function(callback)
     {
-                this.buildAuth();
+                this.buildAuth("flush");
                 $.ajax({
-                    headers: this.headers,
-                    type: "GET",
-                    url: this.baseUrl+"flush",
-                    dataTypeString:"jsonp",
+                    data: this.headers,
+                    url: this.baseUrl+"get/flush",
+                    dataType: "jsonp",
                     success: function(data){
                         callback(data);
                     }
@@ -147,12 +152,11 @@ var cloudCache = {
             },
     listKeys : function(callback)
     {
-        this.buildAuth();
+        this.buildAuth("listkeys");
         $.ajax({
-            headers: this.headers,
-            type: "GET",
-            url: this.baseUrl+"listkeys",
-            dataTypeString:"jsonp",
+            data: this.headers,
+            url: this.baseUrl+"get/listkeys",
+            dataType: "jsonp",
             success: function(data){
                 callback(data);
             }
@@ -161,12 +165,11 @@ var cloudCache = {
     
     listKeysValues : function(callback)
     {
-        this.buildAuth();
+        this.buildAuth("list");
         $.ajax({
-            headers: this.headers,
-            type: "GET",
-            url: this.baseUrl+"list",
-            dataTypeString:"jsonp",
+            data: this.headers,
+            url: this.baseUrl+"get/list",
+            dataType: "jsonp",
             success: function(data){
                 callback(data);
             }
@@ -175,17 +178,99 @@ var cloudCache = {
     
     getMyUsage : function(callback)
     {
-        this.buildAuth();
+        this.buildAuth("myusage");
         $.ajax({
-            headers: this.headers,
-            type: "GET",
-            url: this.baseUrl+"myusage",
-            dataTypeString:"jsonp",
+            data: this.headers,
+            url: this.baseUrl+"get/myusage",
+            dataType: "jsonp",
             success: function(data){
                 callback(data);
             }
         })
     }
 }
+var printData= function(data){
+    $("#dump").append(data+" <br/> ");
+}
 
-cloudCache.testAuth();
+
+
+var test1 = function(){
+    var key ='test001';
+    cloudCache.putKeyValue(key, "Hello World",function(data){
+            printData("=====TEST1 === ");
+            printData("PUT KEY ? === >"+data);
+            //GetKey
+            cloudCache.getValue(key, function(data){
+                printData("GET KEY? === >"+data);
+                //deleteKey
+                cloudCache.deleteKey(key, function(data){
+                    printData("DELETE KEY ? === >"+data);
+                    printData("=====TEST1__END === ");
+                });
+                
+            });
+        });
+}
+var test2 = function(){
+    var keys =new Array("test1","test2","test3");
+    printData("=====TEST2 === ");
+    $.each(keys,function(key,value){
+        cloudCache.putKeyValue(value, value,function(data){
+            printData("PUT KEY = "+ value +" ? === >"+data);
+            if((keys.length - 1) == key){
+               setTimeout(
+                    function(){
+                       cloudCache.getMultiValue(keys,function(data){
+                            $.each(data,function(key,value){
+                                printData("GET MultiValue ? === >"+value);
+                            });
+                        });
+                    },1000
+                );
+            }
+        });
+        
+    });
+
+}
+var test3 = function(){
+  var key ='test003';
+    cloudCache.putKeyValue(key, "Hello World",function(data){
+            printData("=====TEST3 === ");
+            printData("PUT KEY ? === >"+data);
+            //flush
+            cloudCache.flush(function(data){
+                printData("FLUSH ? === >"+data);
+                cloudCache.getValue(key, function(data){
+                    printData("GET KEY? === >"+data);
+                });
+            });
+    });
+
+}
+var test4 = function(){
+    test2();
+    printData("=====TEST4 === ");
+    cloudCache.listKeys(function(data){
+        printData("GET listKeys? === >"+data);
+    });
+   cloudCache.listKeysValues(function(data){
+        $.each(data,function(key,value){
+            printData("GET listKeysValues? KEY = "+key+", Value = "+value);
+        });
+    });
+    cloudCache.getMyUsage(function(data){
+        printData("GET getMyUsage? === >"+data);
+    });
+}
+$(document).ready(function() {
+    //test1();
+    //test2();
+    //test3();
+    //test4();
+});
+
+
+//cloudCache.testAuth(printData);
+

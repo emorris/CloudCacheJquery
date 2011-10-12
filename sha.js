@@ -1110,6 +1110,7 @@
 			{
 				if ("SHA-1" === variant)
 				{
+                    
 					keyToUse = coreSHA1(keyToUse, keyBinLen);
 				}
 				else
@@ -1139,12 +1140,14 @@
 			/* Calculate the HMAC */
 			if ("SHA-1" === variant)
 			{
+               
 				retVal = coreSHA1(
 							keyWithIPad.concat(this.strToHash),
 							blockBitSize + this.strBinLen);
 				retVal = coreSHA1(
 							keyWithOPad.concat(retVal),
 							blockBitSize + hashBitSize);
+
 			}
 			else
 			{
